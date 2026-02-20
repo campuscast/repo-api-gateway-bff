@@ -8,10 +8,15 @@ import { ScheduleProxyModule } from './schedule/schedule-proxy.module';
 import { PlayerModule } from './player/player.module';
 import { AuditProxyModule } from './audit/audit-proxy.module';
 import { HealthController } from './common/health.controller';
+import { appConfig, redisConfig, validate } from './config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [appConfig, redisConfig],
+      validate,
+    }),
     AuthProxyModule,
     ZonesProxyModule,
     DevicesProxyModule,
