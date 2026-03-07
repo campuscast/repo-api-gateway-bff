@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '@campuscast/shared-libs';
 @Controller('api/v1/audit')
 @UseGuards(JwtAuthGuard)
 export class AuditProxyController {
-  private readonly auditServiceUrl = process.env.AUDIT_SERVICE_URL || 'http://localhost:3009';
+  private readonly auditServiceUrl = process.env.AUDIT_SERVICE_URL || 'http://audit-service:3009';
 
   @Get()
   async queryEvents(@Query() query: Record<string, string | string[] | undefined>, @Req() req?: Request) {

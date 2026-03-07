@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { MetricsModule } from '@campuscast/shared-libs';
 import { ConfigModule } from '@nestjs/config';
 import { AuthProxyModule } from './auth/auth-proxy.module';
 import { ZonesProxyModule } from './zones/zones-proxy.module';
@@ -24,6 +25,7 @@ import { appConfig, redisConfig, validate } from './config';
     ScheduleProxyModule,
     PlayerModule,
     AuditProxyModule,
+      MetricsModule,
   ],
   controllers: [HealthController],
 })
