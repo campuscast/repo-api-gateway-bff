@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Ensure contracts repo is available
+        run: |
+          if [ ! -d ../repo-contracts ]; then
+            echo "repo-contracts is required for contract validation."
+            exit 1
+          fi
+      - name: Validate gateway contract shape
+        run: |
+          rg -n "/devices/register" ../repo-contracts/openapi/gateway.yaml
+          rg -n "/schedules/\\{scheduleId\\}/ops" ../repo-contracts/openapi/gateway.yaml
+          rg -n "@Controller\\('api/v1/schedules'\\)" src/schedule/schedule-proxy.controller.ts
+          rg -n "@Controller\\('api/v1/devices'\\)" src/devices/devices-proxy.controller.ts
+
+  build-and-test:
+    needs: validate-contracts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22.x]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test -- --passWithNoTests
+
+      - name: Build Docker image
+        run: docker build -t ${{ github.repository }}:${{ github.sha }} .
+        if: github.event_name == 'push'
