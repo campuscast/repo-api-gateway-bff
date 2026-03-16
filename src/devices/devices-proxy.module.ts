@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DevicesProxyController } from './devices-proxy.controller';
-@Module({ controllers: [DevicesProxyController] })
+import { EnrollmentProxyController } from './enrollment-proxy.controller';
+
+@Module({ controllers: [DevicesProxyController, EnrollmentProxyController] })
 export class DevicesProxyModule {}

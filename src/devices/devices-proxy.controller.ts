@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Param, Body, UseGuards, Req, HttpException } from '@nestjs/common';
+import { Controller, Post, Get, Put, Patch, Delete, Param, Query, Body, UseGuards, Req, HttpException } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard, ZoneScopeGuard } from '@campuscast/shared-libs';
 
@@ -10,7 +10,7 @@ export class DevicesProxyController {
   private async proxy(
     path: string,
     req: Request,
-    method: 'GET' | 'POST' | 'PUT',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     body?: Record<string, unknown>,
   ) {
     const res = await fetch(`${this.deviceServiceUrl}${path}`, {
@@ -28,6 +28,12 @@ export class DevicesProxyController {
     return payload;
   }
 
+  @Get()
+  @UseGuards(ZoneScopeGuard)
+  async list(@Query('zone_id') zoneId: string, @Req() req: Request) {
+    return this.proxy(`/devices?zone_id=${encodeURIComponent(zoneId ?? '')}`, req, 'GET');
+  }
+
   @Post('register')
   @UseGuards(ZoneScopeGuard)
   async register(@Body() body: { device_name: string; device_type: string; hardware_id?: string; zone_id: string; group_id: string }, @Req() req: Request) {
@@ -43,6 +49,16 @@ export class DevicesProxyController {
   @Get(':deviceId')
   async getDevice(@Param('deviceId') deviceId: string, @Req() req: Request) {
     return this.proxy(`/devices/${deviceId}`, req, 'GET');
+  }
+
+  @Patch(':deviceId')
+  async update(@Param('deviceId') deviceId: string, @Body() body: Record<string, unknown>, @Req() req: Request) {
+    return this.proxy(`/devices/${deviceId}`, req, 'PATCH', body);
+  }
+
+  @Delete(':deviceId')
+  async remove(@Param('deviceId') deviceId: string, @Req() req: Request) {
+    return this.proxy(`/devices/${deviceId}`, req, 'DELETE');
   }
 
   @Put(':deviceId/assign')
