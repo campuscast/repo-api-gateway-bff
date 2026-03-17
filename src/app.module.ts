@@ -8,6 +8,9 @@ import { ContentProxyModule } from './content/content-proxy.module';
 import { ScheduleProxyModule } from './schedule/schedule-proxy.module';
 import { PlayerModule } from './player/player.module';
 import { AuditProxyModule } from './audit/audit-proxy.module';
+import { UsersProxyModule } from './users/users-proxy.module';
+import { RolesProxyModule } from './roles/roles-proxy.module';
+import { SystemProxyModule } from './system/system-proxy.module';
 import { HealthController } from './common/health.controller';
 import { appConfig, redisConfig, validate } from './config';
 
@@ -19,13 +22,16 @@ import { appConfig, redisConfig, validate } from './config';
       validate,
     }),
     AuthProxyModule,
+    UsersProxyModule,
+    RolesProxyModule,
+    SystemProxyModule,
     ZonesProxyModule,
     DevicesProxyModule,
     ContentProxyModule,
     ScheduleProxyModule,
     PlayerModule,
     AuditProxyModule,
-      MetricsModule,
+    MetricsModule,
   ],
   controllers: [HealthController],
 })
