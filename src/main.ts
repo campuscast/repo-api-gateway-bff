@@ -2,11 +2,19 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { CorrelationIdInterceptor, LoggingInterceptor, AllExceptionsFilter, initTracing } from '@campuscast/shared-libs';
+import { AuthRateLimitMiddleware } from './common/auth-rate-limit.middleware';
+import { CsrfProtectionMiddleware } from './common/csrf.middleware';
+import type { NextFunction, Request, Response } from 'express';
 
 initTracing('api-gateway');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const authRateLimit = new AuthRateLimitMiddleware();
+  const csrfProtection = new CsrfProtectionMiddleware();
+
+  app.use((req: Request, res: Response, next: NextFunction) => authRateLimit.use(req, res, next));
+  app.use((req: Request, res: Response, next: NextFunction) => csrfProtection.use(req, res, next));
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.useGlobalInterceptors(new CorrelationIdInterceptor(), new LoggingInterceptor());
