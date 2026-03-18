@@ -1,11 +1,12 @@
 import {
-  Controller, Get, Post, Put, Body, Param, HttpException, Req, UseGuards,
+  Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpException, Req, UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { JwtAuthGuard } from '@campuscast/shared-libs';
+import { JwtAuthGuard, PermissionsGuard, RequirePermissions } from '@campuscast/shared-libs';
+import { AdminGuard } from '../common/admin.guard';
 
 @Controller('api/v1/roles')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RolesProxyController {
   private readonly authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
 
@@ -31,32 +32,46 @@ export class RolesProxyController {
   }
 
   @Get()
+  @RequirePermissions('users.read')
   async list(@Req() req: Request) {
     return this.proxy('GET', '/roles', req);
   }
 
   @Get(':id')
+  @RequirePermissions('users.read')
   async getById(@Param('id') id: string, @Req() req: Request) {
     return this.proxy('GET', `/roles/${id}`, req);
   }
 
   @Post()
+  @RequirePermissions('users.write')
   async create(@Body() body: unknown, @Req() req: Request) {
     return this.proxy('POST', '/roles', req, body);
   }
 
   @Put(':id')
+  @RequirePermissions('users.write')
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     return this.proxy('PUT', `/roles/${id}`, req, body);
   }
 
+  @Delete(':id')
+  @HttpCode(200)
+  @RequirePermissions('users.write')
+  @UseGuards(AdminGuard)
+  async removeRole(@Param('id') id: string, @Req() req: Request) {
+    return this.proxy('DELETE', `/roles/${id}`, req);
+  }
+
   @Post('assign')
+  @RequirePermissions('users.write')
   async assign(@Body() body: unknown, @Req() req: Request) {
     return this.proxy('POST', '/roles/assign', req, body);
   }
 
   @Post('remove')
-  async remove(@Body() body: unknown, @Req() req: Request) {
+  @RequirePermissions('users.write')
+  async removeFromUser(@Body() body: unknown, @Req() req: Request) {
     return this.proxy('POST', '/roles/remove', req, body);
   }
 }

@@ -10,6 +10,9 @@ const CSRF_TOKEN_COOKIE = 'csrf_token';
 @Controller('api/v1')
 export class AuthProxyController {
   private readonly authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
+  private hasAccessToken(payload: Record<string, unknown>): payload is { access_token: string } {
+    return typeof payload.access_token === 'string' && payload.access_token.length > 0;
+  }
 
   private parseCookie(req: Request, name: string): string | null {
     const raw = req.headers['cookie'];
@@ -72,6 +75,7 @@ export class AuthProxyController {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(req.headers['authorization'] ? { authorization: String(req.headers['authorization']) } : {}),
         ...(req.headers['x-correlation-id'] ? { 'x-correlation-id': String(req.headers['x-correlation-id']) } : {}),
         ...(req.headers['cookie'] ? { cookie: String(req.headers['cookie']) } : {}),
       },
@@ -120,7 +124,23 @@ export class AuthProxyController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const payload = await this.proxyPost('/auth/login', body, req);
-    this.setAuthCookies(res, req, payload as Record<string, any>);
+    if (this.hasAccessToken(payload as Record<string, unknown>)) {
+      this.setAuthCookies(res, req, payload as Record<string, any>);
+    }
+    return payload;
+  }
+
+  @Post('auth/mfa/login-verify')
+  @HttpCode(200)
+  async loginMfaVerify(
+    @Body() body: { mfa_token: string; code: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const payload = await this.proxyPost('/auth/mfa/login-verify', body, req);
+    if (this.hasAccessToken(payload as Record<string, unknown>)) {
+      this.setAuthCookies(res, req, payload as Record<string, any>);
+    }
     return payload;
   }
 
@@ -156,5 +176,39 @@ export class AuthProxyController {
   @UseGuards(JwtAuthGuard)
   async me(@Req() req: Request) {
     return this.proxyGet('/auth/me', req);
+  }
+
+  @Get('auth/mfa/status')
+  @UseGuards(JwtAuthGuard)
+  async mfaStatus(@Req() req: Request) {
+    return this.proxyGet('/auth/mfa/status', req);
+  }
+
+  @Post('auth/mfa/setup')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async mfaSetup(@Req() req: Request) {
+    return this.proxyPost('/auth/mfa/setup', {}, req);
+  }
+
+  @Post('auth/mfa/verify')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async mfaVerify(@Body() body: { code: string }, @Req() req: Request) {
+    return this.proxyPost('/auth/mfa/verify', body, req);
+  }
+
+  @Post('auth/mfa/enable')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async mfaEnable(@Body() body: { code: string }, @Req() req: Request) {
+    return this.proxyPost('/auth/mfa/enable', body, req);
+  }
+
+  @Post('auth/mfa/disable')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async mfaDisable(@Body() body: { password: string }, @Req() req: Request) {
+    return this.proxyPost('/auth/mfa/disable', body, req);
   }
 }

@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Query, UseGuards, Req, HttpException } from '@nestjs/common';
 import { Request } from 'express';
-import { JwtAuthGuard } from '@campuscast/shared-libs';
+import { JwtAuthGuard, PermissionsGuard, RequirePermissions } from '@campuscast/shared-libs';
 
 @Controller('api/v1/enrollment')
 export class EnrollmentProxyController {
@@ -17,6 +17,7 @@ export class EnrollmentProxyController {
       headers: {
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...(req.headers['authorization'] ? { authorization: String(req.headers['authorization']) } : {}),
+        ...(req.headers['cookie'] ? { cookie: String(req.headers['cookie']) } : {}),
         ...(req.headers['x-correlation-id'] ? { 'x-correlation-id': String(req.headers['x-correlation-id']) } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -29,7 +30,8 @@ export class EnrollmentProxyController {
 
   /** Create pending device — requires CMS auth */
   @Post('create')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('devices.write')
   async createPending(@Body() body: { device_name: string; device_type: string; hardware_id?: string; zone_id: string; group_id: string }, @Req() req: Request) {
     return this.proxy('/enrollment/create', req, 'POST', body);
   }
@@ -42,14 +44,16 @@ export class EnrollmentProxyController {
 
   /** CMS activates device by code — requires CMS auth */
   @Post('activate-by-code')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('devices.write')
   async activateByCode(@Body() body: { device_id: string; activation_code: string }, @Req() req: Request) {
     return this.proxy('/enrollment/activate-by-code', req, 'POST', body);
   }
 
   /** CMS activates device by MAC — requires CMS auth */
   @Post('activate-by-mac')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('devices.write')
   async activateByMac(@Body() body: { device_id: string; hardware_id: string }, @Req() req: Request) {
     return this.proxy('/enrollment/activate-by-mac', req, 'POST', body);
   }

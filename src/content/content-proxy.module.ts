@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ContentProxyController } from './content-proxy.controller';
-@Module({ controllers: [ContentProxyController] })
+import { PublicationsProxyController } from './publications-proxy.controller';
+
+@Module({ controllers: [ContentProxyController, PublicationsProxyController] })
 export class ContentProxyModule {}

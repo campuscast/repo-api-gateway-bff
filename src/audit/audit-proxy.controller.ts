@@ -1,13 +1,14 @@
 import { Controller, Get, Query, Req, UseGuards, HttpException } from '@nestjs/common';
 import { Request } from 'express';
-import { JwtAuthGuard } from '@campuscast/shared-libs';
+import { JwtAuthGuard, PermissionsGuard, RequirePermissions } from '@campuscast/shared-libs';
 
 @Controller('api/v1/audit')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AuditProxyController {
   private readonly auditServiceUrl = process.env.AUDIT_SERVICE_URL || 'http://audit-service:3009';
 
   @Get()
+  @RequirePermissions('audit.read')
   async queryEvents(@Query() query: Record<string, string | string[] | undefined>, @Req() req?: Request) {
     const upstreamUrl = new URL(`${this.auditServiceUrl}/audit`);
     const rawQuery = req?.originalUrl?.includes('?')

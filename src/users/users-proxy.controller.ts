@@ -3,10 +3,10 @@ import {
   HttpCode, HttpException, Req, UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { JwtAuthGuard } from '@campuscast/shared-libs';
+import { JwtAuthGuard, PermissionsGuard, RequirePermissions } from '@campuscast/shared-libs';
 
 @Controller('api/v1/users')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class UsersProxyController {
   private readonly authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
 
@@ -33,6 +33,7 @@ export class UsersProxyController {
   }
 
   @Get()
+  @RequirePermissions('users.read')
   async list(
     @Req() req: Request,
     @Query('page') page?: string,
@@ -52,24 +53,41 @@ export class UsersProxyController {
   }
 
   @Get(':id')
+  @RequirePermissions('users.read')
   async getById(@Param('id') id: string, @Req() req: Request) {
     return this.proxy('GET', `/users/${id}`, req);
   }
 
   @Post()
+  @RequirePermissions('users.write')
   async create(@Body() body: unknown, @Req() req: Request) {
     return this.proxy('POST', '/users', req, body);
   }
 
   @Put(':id')
+  @RequirePermissions('users.write')
   async update(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     return this.proxy('PUT', `/users/${id}`, req, body);
   }
 
   @Delete(':id')
   @HttpCode(200)
+  @RequirePermissions('users.write')
   async deactivate(@Param('id') id: string, @Req() req: Request) {
     return this.proxy('DELETE', `/users/${id}`, req);
+  }
+
+  @Post(':id/restore')
+  @RequirePermissions('users.write')
+  async restore(@Param('id') id: string, @Req() req: Request) {
+    return this.proxy('POST', `/users/${id}/restore`, req);
+  }
+
+  @Delete(':id/permanent')
+  @HttpCode(200)
+  @RequirePermissions('users.write')
+  async removePermanently(@Param('id') id: string, @Req() req: Request) {
+    return this.proxy('DELETE', `/users/${id}/permanent`, req);
   }
 
   @Post('me/change-password')
@@ -78,6 +96,7 @@ export class UsersProxyController {
   }
 
   @Post(':id/reset-password')
+  @RequirePermissions('users.write')
   async resetPassword(@Param('id') id: string, @Body() body: unknown, @Req() req: Request) {
     return this.proxy('POST', `/users/${id}/reset-password`, req, body);
   }
