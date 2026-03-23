@@ -1,4 +1,15 @@
-import { Controller, Post, Get, Body, Query, UseGuards, Req, HttpException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Controller,
+  GatewayTimeoutException,
+  Post,
+  Get,
+  Body,
+  Query,
+  UseGuards,
+  Req,
+  HttpException,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard, PermissionsGuard, RequirePermissions } from '@campuscast/shared-libs';
 
@@ -12,18 +23,40 @@ export class EnrollmentProxyController {
     method: 'GET' | 'POST',
     body?: Record<string, unknown>,
   ) {
-    const res = await fetch(`${this.deviceServiceUrl}${path}`, {
-      method,
-      headers: {
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(req.headers['authorization'] ? { authorization: String(req.headers['authorization']) } : {}),
-        ...(req.headers['cookie'] ? { cookie: String(req.headers['cookie']) } : {}),
-        ...(req.headers['x-correlation-id'] ? { 'x-correlation-id': String(req.headers['x-correlation-id']) } : {}),
-      },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-      signal: AbortSignal.timeout(5000),
-    });
-    const payload = await res.json();
+    let res: Response;
+    try {
+      res = await fetch(`${this.deviceServiceUrl}${path}`, {
+        method,
+        headers: {
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...(req.headers['authorization'] ? { authorization: String(req.headers['authorization']) } : {}),
+          ...(req.headers['cookie'] ? { cookie: String(req.headers['cookie']) } : {}),
+          ...(req.headers['x-correlation-id'] ? { 'x-correlation-id': String(req.headers['x-correlation-id']) } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch (error) {
+      const err = error as { name?: string };
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+        throw new GatewayTimeoutException('Device service request timed out');
+      }
+      throw new BadGatewayException('Device service is unavailable');
+    }
+
+    const raw = await res.text();
+    let payload: unknown = {
+      statusCode: res.status,
+      message: res.statusText || 'Upstream response body was empty',
+    };
+    if (raw) {
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        payload = { statusCode: res.status, message: raw };
+      }
+    }
+
     if (!res.ok) throw new HttpException(payload as Record<string, any>, res.status);
     return payload;
   }

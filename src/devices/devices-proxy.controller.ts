@@ -76,6 +76,13 @@ export class DevicesProxyController {
     return this.proxy(`/devices/${deviceId}`, req, 'GET');
   }
 
+  @Get(':deviceId/preview')
+  @RequirePermissions('devices.read')
+  async getPreview(@Param('deviceId') deviceId: string, @Req() req: AuthenticatedRequest) {
+    await this.ensureDeviceZoneAccess(deviceId, req);
+    return this.proxy(`/devices/${deviceId}/preview`, req, 'GET');
+  }
+
   @Patch(':deviceId')
   @RequirePermissions('devices.write')
   async update(@Param('deviceId') deviceId: string, @Body() body: Record<string, unknown>, @Req() req: AuthenticatedRequest) {

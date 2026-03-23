@@ -77,4 +77,44 @@ export class PlayerController {
       throw new HttpException(payload as Record<string, any>, res.status);
     }
   }
+
+  @Post('preview')
+  async uploadPreview(@Body() body: {
+    device_id?: string;
+    image_base64?: string;
+    image_url?: string;
+    mime_type?: string;
+    captured_at?: string;
+    width?: number;
+    height?: number;
+    status?: string;
+  }, @Req() req: Request & { device?: { sub?: string; device_id?: string } }) {
+    const deviceId = req.device?.sub || req.device?.device_id || body.device_id;
+    if (!deviceId) {
+      throw new HttpException({ message: 'device_id is required' }, 400);
+    }
+
+    const res = await fetch(`${this.deviceServiceUrl}/devices/${encodeURIComponent(deviceId)}/preview`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(req.headers['authorization'] ? { authorization: String(req.headers['authorization']) } : {}),
+        ...(req.headers['x-correlation-id'] ? { 'x-correlation-id': String(req.headers['x-correlation-id']) } : {}),
+      },
+      body: JSON.stringify({
+        image_base64: body.image_base64,
+        image_url: body.image_url,
+        mime_type: body.mime_type,
+        captured_at: body.captured_at,
+        width: body.width,
+        height: body.height,
+        status: body.status,
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+
+    const payload = await res.json();
+    if (!res.ok) throw new HttpException(payload as Record<string, any>, res.status);
+    return payload;
+  }
 }

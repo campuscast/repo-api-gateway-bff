@@ -61,8 +61,27 @@ export class ScheduleProxyController {
   @Get()
   @RequirePermissions('schedules.read')
   @UseGuards(ZoneScopeGuard)
-  async list(@Query('zone_id') zoneId: string, @Query('page') page = 1, @Query('page_size') pageSize = 20, @Req() req: AuthenticatedRequest) {
-    return this.proxy(`/schedules?zone_id=${encodeURIComponent(zoneId)}&page=${page}&page_size=${pageSize}`, req, 'GET');
+  async list(
+    @Query('zone_id') zoneId: string,
+    @Query('group_id') groupId: string | undefined,
+    @Query('page') page = 1,
+    @Query('page_size') pageSize = 20,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const params = new URLSearchParams({
+      zone_id: zoneId,
+      page: String(page),
+      page_size: String(pageSize),
+    });
+    if (groupId) params.set('group_id', groupId);
+    return this.proxy(`/schedules?${params.toString()}`, req, 'GET');
+  }
+
+  @Get('usage')
+  @RequirePermissions('schedules.read')
+  @UseGuards(ZoneScopeGuard)
+  async usage(@Query('zone_id') zoneId: string, @Req() req: AuthenticatedRequest) {
+    return this.proxy(`/schedules/usage?zone_id=${encodeURIComponent(zoneId)}`, req, 'GET');
   }
 
   @Get(':scheduleId')
@@ -70,6 +89,35 @@ export class ScheduleProxyController {
   async getById(@Param('scheduleId') scheduleId: string, @Req() req: AuthenticatedRequest) {
     await this.ensureScheduleZoneAccess(scheduleId, req);
     return this.proxy(`/schedules/${scheduleId}`, req, 'GET');
+  }
+
+  @Get(':scheduleId/calendar')
+  @RequirePermissions('schedules.read')
+  async getCalendar(
+    @Param('scheduleId') scheduleId: string,
+    @Query('view') view = 'month',
+    @Query('date') date: string | undefined,
+    @Query('from') from: string | undefined,
+    @Query('to') to: string | undefined,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    await this.ensureScheduleZoneAccess(scheduleId, req);
+    const params = new URLSearchParams({ view });
+    if (date) params.set('date', date);
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    return this.proxy(`/schedules/${scheduleId}/calendar?${params.toString()}`, req, 'GET');
+  }
+
+  @Get(':scheduleId/day')
+  @RequirePermissions('schedules.read')
+  async getDay(
+    @Param('scheduleId') scheduleId: string,
+    @Query('date') date: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    await this.ensureScheduleZoneAccess(scheduleId, req);
+    return this.proxy(`/schedules/${scheduleId}/day?date=${encodeURIComponent(date)}`, req, 'GET');
   }
 
   @Post(':scheduleId/lock')
@@ -95,6 +143,17 @@ export class ScheduleProxyController {
   async saveDraft(@Param('id') id: string, @Body() body: { slots: any[]; lock_token: string }, @Req() req: AuthenticatedRequest) {
     await this.ensureScheduleZoneAccess(id, req);
     return this.proxy(`/schedules/${id}/save`, req, 'POST', body);
+  }
+
+  @Post(':scheduleId/day')
+  @RequirePermissions('schedules.write')
+  async saveDay(
+    @Param('scheduleId') scheduleId: string,
+    @Body() body: { date: string; slots: any[]; lock_token?: string },
+    @Req() req: AuthenticatedRequest,
+  ) {
+    await this.ensureScheduleZoneAccess(scheduleId, req);
+    return this.proxy(`/schedules/${scheduleId}/day`, req, 'POST', body);
   }
 
   @Post(':scheduleId/ops')

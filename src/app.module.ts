@@ -11,6 +11,7 @@ import { AuditProxyModule } from './audit/audit-proxy.module';
 import { UsersProxyModule } from './users/users-proxy.module';
 import { RolesProxyModule } from './roles/roles-proxy.module';
 import { SystemProxyModule } from './system/system-proxy.module';
+import { ReleasesProxyModule } from './releases/releases-proxy.module';
 import { HealthController } from './common/health.controller';
 import { appConfig, redisConfig, validate } from './config';
 
@@ -29,6 +30,7 @@ import { appConfig, redisConfig, validate } from './config';
     DevicesProxyModule,
     ContentProxyModule,
     ScheduleProxyModule,
+    ReleasesProxyModule,
     PlayerModule,
     AuditProxyModule,
     MetricsModule,
