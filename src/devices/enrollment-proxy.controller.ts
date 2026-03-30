@@ -65,7 +65,7 @@ export class EnrollmentProxyController {
   @Post('create')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('devices.write')
-  async createPending(@Body() body: { device_name: string; device_type: string; hardware_id?: string; zone_id: string; group_id: string }, @Req() req: Request) {
+  async createPending(@Body() body: { device_name: string; device_type?: string; hardware_id?: string; zone_id: string; group_id?: string }, @Req() req: Request) {
     return this.proxy('/enrollment/create', req, 'POST', body);
   }
 

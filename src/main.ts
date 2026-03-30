@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { AppModule } from './app.module';
 import { CorrelationIdInterceptor, LoggingInterceptor, AllExceptionsFilter, initTracing } from '@campuscast/shared-libs';
 import { AuthRateLimitMiddleware } from './common/auth-rate-limit.middleware';
@@ -10,6 +11,7 @@ initTracing('api-gateway');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.useWebSocketAdapter(new WsAdapter(app));
   const authRateLimit = new AuthRateLimitMiddleware();
   const csrfProtection = new CsrfProtectionMiddleware();
 

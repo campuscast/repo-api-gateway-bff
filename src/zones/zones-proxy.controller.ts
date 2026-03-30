@@ -114,7 +114,7 @@ export class ZonesProxyController {
   @Post(':zoneId/groups')
   @RequirePermissions('zones.write')
   @UseGuards(AdminGuard)
-  async createGroup(@Param('zoneId') zoneId: string, @Body() body: { name: string }, @Req() req: AuthenticatedRequest) {
+  async createGroup(@Param('zoneId') zoneId: string, @Body() body: { name: string; description?: string }, @Req() req: AuthenticatedRequest) {
     return this.proxy(`/zones/${zoneId}/groups`, req, 'POST', body);
   }
 

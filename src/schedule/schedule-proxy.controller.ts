@@ -51,6 +51,23 @@ export class ScheduleProxyController {
     assertZoneAccess(req.user, zoneId, `schedule:${scheduleId}`);
   }
 
+  private getEditorUserId(req: AuthenticatedRequest): string {
+    return req.user?.sub || req.user?.user_id || '';
+  }
+
+  private sanitizeScheduleLockToken<T extends Record<string, unknown>>(schedule: T, userId: string): T {
+    const lockedBy = typeof schedule?.locked_by === 'string' ? schedule.locked_by : '';
+    const lockToken = typeof schedule?.lock_token === 'string' ? schedule.lock_token : '';
+    if (!lockToken) return schedule;
+    if (!userId || (lockedBy && lockedBy !== userId)) {
+      return {
+        ...schedule,
+        lock_token: '',
+      };
+    }
+    return schedule;
+  }
+
   @Post()
   @RequirePermissions('schedules.write')
   @UseGuards(ZoneScopeGuard)
@@ -67,14 +84,24 @@ export class ScheduleProxyController {
     @Query('page') page = 1,
     @Query('page_size') pageSize = 20,
     @Req() req: AuthenticatedRequest,
-  ) {
+  ): Promise<Record<string, unknown>> {
     const params = new URLSearchParams({
       zone_id: zoneId,
       page: String(page),
       page_size: String(pageSize),
     });
     if (groupId) params.set('group_id', groupId);
-    return this.proxy(`/schedules?${params.toString()}`, req, 'GET');
+    const payload = await this.proxy(`/schedules?${params.toString()}`, req, 'GET') as {
+      data?: Array<Record<string, unknown>>;
+      pagination?: Record<string, unknown>;
+    };
+    const userId = this.getEditorUserId(req);
+    return {
+      data: Array.isArray(payload.data)
+        ? payload.data.map((item) => this.sanitizeScheduleLockToken(item, userId))
+        : [],
+      pagination: payload.pagination || {},
+    };
   }
 
   @Get('usage')
@@ -88,7 +115,15 @@ export class ScheduleProxyController {
   @RequirePermissions('schedules.read')
   async getById(@Param('scheduleId') scheduleId: string, @Req() req: AuthenticatedRequest) {
     await this.ensureScheduleZoneAccess(scheduleId, req);
-    return this.proxy(`/schedules/${scheduleId}`, req, 'GET');
+    const payload = await this.proxy(`/schedules/${scheduleId}`, req, 'GET') as Record<string, unknown>;
+    return this.sanitizeScheduleLockToken(payload, this.getEditorUserId(req));
+  }
+
+  @Delete(':scheduleId')
+  @RequirePermissions('schedules.write')
+  async deleteById(@Param('scheduleId') scheduleId: string, @Req() req: AuthenticatedRequest) {
+    await this.ensureScheduleZoneAccess(scheduleId, req);
+    return this.proxy(`/schedules/${scheduleId}`, req, 'DELETE');
   }
 
   @Get(':scheduleId/calendar')
@@ -135,6 +170,17 @@ export class ScheduleProxyController {
   async releaseLock(@Param('scheduleId') scheduleId: string, @Body() body: { lock_token: string }, @Req() req: AuthenticatedRequest) {
     await this.ensureScheduleZoneAccess(scheduleId, req);
     return this.proxy(`/schedules/${scheduleId}/lock`, req, 'DELETE', body);
+  }
+
+  @Post(':scheduleId/lock/refresh')
+  @RequirePermissions('schedules.write')
+  async refreshLock(
+    @Param('scheduleId') scheduleId: string,
+    @Body() body: { lock_token: string; ttl_seconds?: number },
+    @Req() req: AuthenticatedRequest,
+  ) {
+    await this.ensureScheduleZoneAccess(scheduleId, req);
+    return this.proxy(`/schedules/${scheduleId}/lock/refresh`, req, 'POST', body);
   }
 
   @Post(':id/save')

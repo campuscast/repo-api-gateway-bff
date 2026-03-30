@@ -14,6 +14,7 @@ import {
 import { Request } from 'express';
 import { JwtAuthGuard, PermissionsGuard, RequirePermissions, ZoneScopeGuard } from '@campuscast/shared-libs';
 import { assertZoneAccess, type ZoneAwareUser } from '../common/zone-access';
+import { PublicationsEventsService } from './publications-events.service';
 
 type AuthenticatedRequest = Request & {
   user?: ZoneAwareUser;
@@ -23,6 +24,8 @@ type AuthenticatedRequest = Request & {
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class PublicationsProxyController {
   private readonly contentServiceUrl = process.env.CONTENT_SERVICE_URL || 'http://localhost:3004';
+
+  constructor(private readonly publicationsEvents: PublicationsEventsService) {}
 
   private async proxy(
     path: string,
@@ -80,6 +83,31 @@ export class PublicationsProxyController {
     return this.proxy(`/content/publications/${encodeURIComponent(publicationId)}`, req, 'GET');
   }
 
+  @Post(':publicationId/copy')
+  @RequirePermissions('content.write')
+  @UseGuards(ZoneScopeGuard)
+  async copy(
+    @Param('publicationId') publicationId: string,
+    @Body() body: { zone_id: string; title: string },
+    @Req() req: AuthenticatedRequest,
+  ) {
+    await this.ensurePublicationZoneAccess(publicationId, req);
+    const publication = await this.proxy(
+      `/content/publications/${encodeURIComponent(publicationId)}/copy`,
+      req,
+      'POST',
+      body,
+    ) as { publication_id?: string; zone_id?: string };
+    if (publication.publication_id && publication.zone_id) {
+      this.publicationsEvents.publishChange({
+        action: 'created',
+        publication_id: publication.publication_id,
+        zone_id: publication.zone_id,
+      });
+    }
+    return publication;
+  }
+
   @Patch(':publicationId')
   @RequirePermissions('content.write')
   async update(
@@ -88,14 +116,39 @@ export class PublicationsProxyController {
     @Req() req: AuthenticatedRequest,
   ) {
     await this.ensurePublicationZoneAccess(publicationId, req);
-    return this.proxy(`/content/publications/${encodeURIComponent(publicationId)}`, req, 'PATCH', body);
+    const publication = await this.proxy(
+      `/content/publications/${encodeURIComponent(publicationId)}`,
+      req,
+      'PATCH',
+      body,
+    ) as { publication_id?: string; zone_id?: string };
+    if (publication.publication_id && publication.zone_id) {
+      this.publicationsEvents.publishChange({
+        action: 'updated',
+        publication_id: publication.publication_id,
+        zone_id: publication.zone_id,
+      });
+    }
+    return publication;
   }
 
   @Delete(':publicationId')
   @RequirePermissions('content.write')
   async archive(@Param('publicationId') publicationId: string, @Req() req: AuthenticatedRequest) {
     await this.ensurePublicationZoneAccess(publicationId, req);
-    return this.proxy(`/content/publications/${encodeURIComponent(publicationId)}`, req, 'DELETE');
+    const publication = await this.proxy(
+      `/content/publications/${encodeURIComponent(publicationId)}`,
+      req,
+      'DELETE',
+    ) as { publication_id?: string; zone_id?: string };
+    if (publication.publication_id && publication.zone_id) {
+      this.publicationsEvents.publishChange({
+        action: 'archived',
+        publication_id: publication.publication_id,
+        zone_id: publication.zone_id,
+      });
+    }
+    return publication;
   }
 
   @Post()
@@ -112,6 +165,17 @@ export class PublicationsProxyController {
     },
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.proxy('/content/publications', req, 'POST', body);
+    const publication = await this.proxy('/content/publications', req, 'POST', body) as {
+      publication_id?: string;
+      zone_id?: string;
+    };
+    if (publication.publication_id && publication.zone_id) {
+      this.publicationsEvents.publishChange({
+        action: 'created',
+        publication_id: publication.publication_id,
+        zone_id: publication.zone_id,
+      });
+    }
+    return publication;
   }
 }

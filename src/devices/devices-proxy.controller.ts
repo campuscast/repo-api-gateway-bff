@@ -58,14 +58,14 @@ export class DevicesProxyController {
   @Post('register')
   @RequirePermissions('devices.write')
   @UseGuards(ZoneScopeGuard)
-  async register(@Body() body: { device_name: string; device_type: string; hardware_id?: string; zone_id: string; group_id: string }, @Req() req: AuthenticatedRequest) {
+  async register(@Body() body: { device_name: string; device_type: string; hardware_id?: string; zone_id: string; group_id?: string }, @Req() req: AuthenticatedRequest) {
     return this.proxy('/devices/register', req, 'POST', body);
   }
 
   @Post('enroll')
   @RequirePermissions('devices.write')
   @UseGuards(ZoneScopeGuard)
-  async enroll(@Body() body: { device_name: string; device_type: string; hardware_id?: string; zone_id: string; group_id: string }, @Req() req: AuthenticatedRequest) {
+  async enroll(@Body() body: { device_name: string; device_type: string; hardware_id?: string; zone_id: string; group_id?: string }, @Req() req: AuthenticatedRequest) {
     return this.proxy('/devices/register', req, 'POST', body);
   }
 
@@ -99,7 +99,7 @@ export class DevicesProxyController {
 
   @Put(':deviceId/assign')
   @RequirePermissions('devices.write')
-  async assign(@Param('deviceId') deviceId: string, @Body() body: { group_id: string }, @Req() req: AuthenticatedRequest) {
+  async assign(@Param('deviceId') deviceId: string, @Body() body: { group_id?: string }, @Req() req: AuthenticatedRequest) {
     await this.ensureDeviceZoneAccess(deviceId, req);
     return this.proxy(`/devices/${deviceId}/assign`, req, 'PUT', body);
   }
