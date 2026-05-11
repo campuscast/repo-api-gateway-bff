@@ -118,6 +118,18 @@ export class ZonesProxyController {
     return this.proxy(`/zones/${zoneId}/groups`, req, 'POST', body);
   }
 
+  @Put(':zoneId/groups/:groupId/layout')
+  @RequirePermissions('zones.write')
+  @UseGuards(AdminGuard)
+  async updateGroupLayout(
+    @Param('zoneId') zoneId: string,
+    @Param('groupId') groupId: string,
+    @Body() body: { items?: unknown[] },
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.proxy(`/zones/${zoneId}/groups/${groupId}/layout`, req, 'PUT', body);
+  }
+
   @Delete(':zoneId/groups/:groupId')
   @RequirePermissions('zones.write')
   @UseGuards(AdminGuard)

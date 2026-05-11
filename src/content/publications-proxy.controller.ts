@@ -151,6 +151,44 @@ export class PublicationsProxyController {
     return publication;
   }
 
+  @Post(':publicationId/restore')
+  @RequirePermissions('content.write')
+  async restore(@Param('publicationId') publicationId: string, @Req() req: AuthenticatedRequest) {
+    await this.ensurePublicationZoneAccess(publicationId, req);
+    const publication = await this.proxy(
+      `/content/publications/${encodeURIComponent(publicationId)}/restore`,
+      req,
+      'POST',
+    ) as { publication_id?: string; zone_id?: string };
+    if (publication.publication_id && publication.zone_id) {
+      this.publicationsEvents.publishChange({
+        action: 'restored',
+        publication_id: publication.publication_id,
+        zone_id: publication.zone_id,
+      });
+    }
+    return publication;
+  }
+
+  @Delete(':publicationId/permanent')
+  @RequirePermissions('content.write')
+  async removePermanently(@Param('publicationId') publicationId: string, @Req() req: AuthenticatedRequest) {
+    await this.ensurePublicationZoneAccess(publicationId, req);
+    const publication = await this.proxy(
+      `/content/publications/${encodeURIComponent(publicationId)}/permanent`,
+      req,
+      'DELETE',
+    ) as { deleted?: boolean; publication_id?: string; zone_id?: string };
+    if (publication.publication_id && publication.zone_id) {
+      this.publicationsEvents.publishChange({
+        action: 'deleted',
+        publication_id: publication.publication_id,
+        zone_id: publication.zone_id,
+      });
+    }
+    return publication;
+  }
+
   @Post()
   @RequirePermissions('content.write')
   @UseGuards(ZoneScopeGuard)

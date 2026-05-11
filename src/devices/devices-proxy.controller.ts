@@ -76,11 +76,25 @@ export class DevicesProxyController {
     return this.proxy(`/devices/${deviceId}`, req, 'GET');
   }
 
+  @Get(':deviceId/runtime')
+  @RequirePermissions('devices.read')
+  async getRuntime(@Param('deviceId') deviceId: string, @Req() req: AuthenticatedRequest) {
+    await this.ensureDeviceZoneAccess(deviceId, req);
+    return this.proxy(`/devices/${deviceId}/runtime`, req, 'GET');
+  }
+
   @Get(':deviceId/preview')
   @RequirePermissions('devices.read')
   async getPreview(@Param('deviceId') deviceId: string, @Req() req: AuthenticatedRequest) {
     await this.ensureDeviceZoneAccess(deviceId, req);
     return this.proxy(`/devices/${deviceId}/preview`, req, 'GET');
+  }
+
+  @Post(':deviceId/preview-request')
+  @RequirePermissions('devices.write')
+  async requestPreview(@Param('deviceId') deviceId: string, @Body() body: { display_id?: string | null }, @Req() req: AuthenticatedRequest) {
+    await this.ensureDeviceZoneAccess(deviceId, req);
+    return this.proxy(`/devices/${deviceId}/preview-request`, req, 'POST', body);
   }
 
   @Patch(':deviceId')

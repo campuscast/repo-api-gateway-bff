@@ -3,7 +3,7 @@ import { OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway, WebSocketSe
 
 export type PublicationBroadcastEvent = {
   type: 'publication.changed';
-  action: 'created' | 'updated' | 'archived';
+  action: 'created' | 'updated' | 'archived' | 'restored' | 'deleted';
   publication_id: string;
   zone_id: string;
   occurred_at: string;
